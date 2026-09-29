@@ -26,9 +26,10 @@ export default async function QuestionPage({
 
   const { data } = await supabase
     .from("answers")
-    .select("id,parent_id,body,author_id,users(display_name),answer_helpful(count)")
+    .select("id,parent_id,body,author_id,users!answers_author_id_fkey(display_name),answer_helpful(count)")
     .eq("question_id", id)
     .order("created_at");
+
   const answers = (data ?? []) as unknown as Answer[];
   const roots = answers.filter((a) => !a.parent_id);
   const replies = (pid: string) => answers.filter((a) => a.parent_id === pid);
