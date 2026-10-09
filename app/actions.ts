@@ -3,12 +3,105 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import { UNIVERSITY_DOMAIN, type AuthState } from "@/lib/auth";
+
+// ---- 新規登録 / ログイン(メールアドレス + パスワード) ----
+function authErrorMessage(error: { message: string; status?: number; code?: string }) {
+  if (error.status === 429 || error.code?.startsWith("over_")) {
+    return "送信回数が多すぎます。しばらく待ってからもう一度お試しください";
+  }
+  switch (error.code) {
+    case "invalid_credentials":
+      return "メールアドレスまたはパスワードが違います";
+    case "user_already_exists":
+      return "このメールアドレスは登録済みです。ログインしてください";
+    case "weak_password":
+      return "パスワードが弱すぎます。もっと長く、推測されにくいものにしてください";
+  }
+  // Supabase側のドメイン制限(トリガー)で弾かれた場合
+  if (error.message.includes("Database error saving new user")) {
+    return `${UNIVERSITY_DOMAIN} のメールアドレスのみ登録できます`;
+  }
+  return `失敗しました: ${error.message}`;
+}
+
+const SignUpSchema = z
+  .object({
+    email: z
+      .string()
+      .trim()
+      .toLowerCase()
+      .refine(
+        (v) => v.endsWith(UNIVERSITY_DOMAIN) && v.length > UNIVERSITY_DOMAIN.length,
+        `${UNIVERSITY_DOMAIN} のメールアドレスのみ登録できます`
+      ),
+    password: z
+      .string()
+      .min(8, "パスワードは8文字以上にしてください")
+      .max(72, "パスワードは72文字以内にしてください"),
+    confirm: z.string(),
+  })
+  .refine((v) => v.password === v.confirm, {
+    path: ["confirm"],
+    message: "確認用のパスワードが一致しません",
+  });
+
+export async function signUp(_prev: AuthState, formData: FormData): Promise<AuthState> {
+  const parsed = SignUpSchema.safeParse({
+    email: formData.get("email"),
+    password: formData.get("password"),
+    confirm: formData.get("confirm"),
+  });
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.auth.signUp({
+    email: parsed.data.email,
+    password: parsed.data.password,
+  });
+  if (error) return { error: authErrorMessage(error) };
+
+  // メール確認ONの設定で登録済みのアドレスを使うと、identities が空で返る
+  if (data.user && data.user.identities?.length === 0) {
+    return { error: "このメールアドレスは登録済みです。ログインしてください" };
+  }
+  // メール確認ONの設定のときはセッションが無い
+  if (!data.session) {
+    return { message: "確認メールを送りました。メール内のリンクを開いてから、ログインしてください。" };
+  }
+  redirect("/profile/edit");
+}
+
+const SignInSchema = z.object({
+  email: z.string().trim().toLowerCase().min(1, "メールアドレスを入力してください"),
+  password: z.string().min(1, "パスワードを入力してください"),
+});
+
+export async function signIn(_prev: AuthState, formData: FormData): Promise<AuthState> {
+  const parsed = SignInSchema.safeParse({
+    email: formData.get("email"),
+    password: formData.get("password"),
+  });
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+
+  const supabase = await createClient();
+  const { error } = await supabase.auth.signInWithPassword(parsed.data);
+  if (error) return { error: authErrorMessage(error) };
+  redirect("/questions");
+}
 
 async function requireUser() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
   return { supabase, user };
+}
+
+// ---- ログアウト ----
+export async function signOut() {
+  const supabase = await createClient();
+  await supabase.auth.signOut();
+  redirect("/login");
 }
 
 // ---- 質問投稿 ----
