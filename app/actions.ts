@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { UNIVERSITY_DOMAIN, type AuthState } from "@/lib/auth";
+import { HELPFUL_REASON_KEYS } from "@/lib/feedback";
 
 // ---- 新規登録 / ログイン(メールアドレス + パスワード) ----
 function authErrorMessage(error: { message: string; status?: number; code?: string }) {
@@ -159,20 +160,112 @@ export async function createAnswer(
   revalidatePath(`/questions/${questionId}`);
 }
 
-// ---- 助かった ----
-export async function markHelpful(answerId: string, questionId: string) {
+// ---- 助かった(理由 + 任意の一言) ----
+const HelpfulSchema = z.object({
+  reasons: z.array(z.string().max(30)).max(4),
+  comment: z.string().trim().max(200),
+});
+
+export async function markHelpful(
+  answerId: string,
+  questionId: string,
+  formData: FormData
+) {
   const { supabase, user } = await requireUser();
-  await supabase
+  const parsed = HelpfulSchema.safeParse({
+    reasons: formData.getAll("reasons"),
+    comment: formData.get("comment") ?? "",
+  });
+  if (!parsed.success) throw new Error("入力内容を確認してください");
+  const reasons = parsed.data.reasons.filter((r) => HELPFUL_REASON_KEYS.includes(r));
+
+  // 重複は主キーで弾かれる。2回目以降は通知も送らない
+  const { error } = await supabase
     .from("answer_helpful")
-    .insert({ answer_id: answerId, user_id: user.id }); // 重複は主キーで弾かれる(無視)
+    .insert({ answer_id: answerId, user_id: user.id });
+
+  if (!error) {
+    const { data: ans } = await supabase
+      .from("answers")
+      .select("author_id")
+      .eq("id", answerId)
+      .single();
+    if (ans && ans.author_id !== user.id) {
+      await supabase.from("notifications").insert({
+        user_id: ans.author_id,
+        actor_id: user.id,
+        type: "helpful",
+        question_id: questionId,
+        answer_id: answerId,
+        reasons,
+        comment: parsed.data.comment || null,
+      });
+    }
+  }
   revalidatePath(`/questions/${questionId}`);
+  revalidatePath("/notifications");
 }
 
-// ---- 解決済みにする(質問者のみ。RLSで本人以外は更新不可) ----
-export async function markSolved(questionId: string) {
-  const { supabase } = await requireUser();
-  await supabase.from("questions").update({ status: "solved" }).eq("id", questionId);
+// ---- 解決済みにする(質問者のみ。決め手の回答と結果報告つき) ----
+const SolveSchema = z.object({
+  answer_id: z.union([z.string().uuid(), z.literal("")]),
+  note: z.string().trim().max(500),
+});
+
+export async function markSolved(questionId: string, formData: FormData) {
+  const { supabase, user } = await requireUser();
+  const parsed = SolveSchema.safeParse({
+    answer_id: formData.get("answer_id") ?? "",
+    note: formData.get("note") ?? "",
+  });
+  if (!parsed.success) throw new Error("入力内容を確認してください");
+
+  // 決め手の回答は、この質問に付いたものだけ有効
+  let solvedAnswer: { id: string; author_id: string } | null = null;
+  if (parsed.data.answer_id) {
+    const { data } = await supabase
+      .from("answers")
+      .select("id,author_id")
+      .eq("id", parsed.data.answer_id)
+      .eq("question_id", questionId)
+      .is("parent_id", null)
+      .single();
+    solvedAnswer = data;
+  }
+
+  const { data: updated } = await supabase
+    .from("questions")
+    .update({
+      status: "solved",
+      solved_answer_id: solvedAnswer?.id ?? null,
+      solved_note: parsed.data.note || null,
+    })
+    .eq("id", questionId)
+    .select("id"); // RLSで本人以外は0件になる
+
+  if (updated?.length && solvedAnswer && solvedAnswer.author_id !== user.id) {
+    await supabase.from("notifications").insert({
+      user_id: solvedAnswer.author_id,
+      actor_id: user.id,
+      type: "solved",
+      question_id: questionId,
+      answer_id: solvedAnswer.id,
+      comment: parsed.data.note || null,
+    });
+  }
   revalidatePath(`/questions/${questionId}`);
+  revalidatePath("/notifications");
+}
+
+// ---- 通知を既読にする ----
+export async function markAllRead() {
+  const { supabase, user } = await requireUser();
+  await supabase
+    .from("notifications")
+    .update({ read_at: new Date().toISOString() })
+    .eq("user_id", user.id)
+    .is("read_at", null);
+  revalidatePath("/notifications");
 }
 
 // ---- プロフィール保存 ----

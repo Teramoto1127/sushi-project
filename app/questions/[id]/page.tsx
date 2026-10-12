@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAnswer, markHelpful, markSolved } from "@/app/actions";
 import { SubmitButton } from "@/components/SubmitButton";
 import { StatusBadge } from "@/components/StatusBadge";
+import { HELPFUL_REASONS } from "@/lib/feedback";
 
 type Answer = {
   id: string; parent_id: string | null; body: string; author_id: string;
@@ -34,7 +35,7 @@ export default async function QuestionPage({
 
   const { data: question } = await supabase
     .from("questions")
-    .select("id,title,body,tags,status,author_id,users(display_name)")
+    .select("id,title,body,tags,status,author_id,solved_answer_id,solved_note,users(display_name)")
     .eq("id", id)
     .single();
   if (!question) notFound();
@@ -68,10 +69,44 @@ export default async function QuestionPage({
             ))}
           </div>
         )}
+
+        {question.solved_note && (
+          <div className="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-900 dark:bg-emerald-950 dark:text-emerald-200">
+            <p className="mb-1 text-xs font-semibold">✓ 解決報告</p>
+            <p className="whitespace-pre-wrap">{question.solved_note}</p>
+          </div>
+        )}
+
         {user?.id === question.author_id && question.status !== "solved" && (
-          <form action={markSolved.bind(null, id)}>
-            <SubmitButton className="btn" pendingText="更新中…">✓ 解決済みにする</SubmitButton>
-          </form>
+          <details className="rounded-lg border border-line p-3">
+            <summary className="btn cursor-pointer">✓ 解決済みにする</summary>
+            <form action={markSolved.bind(null, id)} className="mt-3 space-y-3">
+              <fieldset className="space-y-1 text-sm">
+                <legend className="mb-1 font-semibold">どの回答で解決しましたか?</legend>
+                {roots.map((a) => (
+                  <label key={a.id} className="flex items-start gap-2">
+                    <input type="radio" name="answer_id" value={a.id} className="mt-1" />
+                    <span>
+                      <span className="text-xs text-muted">{a.users?.display_name || "名無し"}: </span>
+                      {a.body.length > 40 ? `${a.body.slice(0, 40)}…` : a.body}
+                    </span>
+                  </label>
+                ))}
+                <label className="flex items-center gap-2">
+                  <input type="radio" name="answer_id" value="" defaultChecked /> 特定の回答ではない / 自分で解決した
+                </label>
+              </fieldset>
+              <div className="space-y-1">
+                <label htmlFor="solved-note" className="text-sm font-semibold">結果はどうなりましたか?(任意)</label>
+                <textarea
+                  id="solved-note" name="note" maxLength={500} rows={3}
+                  placeholder="例: 教わった方法で動きました!テストも通りました"
+                  className="input"
+                />
+              </div>
+              <SubmitButton className="btn btn-primary" pendingText="更新中…">解決済みにする</SubmitButton>
+            </form>
+          </details>
         )}
       </section>
 
@@ -85,13 +120,34 @@ export default async function QuestionPage({
             <p className="text-xs text-muted">
               {a.users?.display_name || "名無し"}
               {a.author_id === question.author_id && <span className="chip ml-2">質問者</span>}
+              {a.id === question.solved_answer_id && <span className="chip ml-2">✓ 解決の決め手</span>}
             </p>
             <p className="whitespace-pre-wrap">{a.body}</p>
-            <form action={markHelpful.bind(null, a.id, id)}>
-              <SubmitButton className="btn text-xs" pendingText="送信中…">
+
+            <details>
+              <summary className="btn cursor-pointer text-xs">
                 👍 助かった ({a.answer_helpful[0]?.count ?? 0})
-              </SubmitButton>
-            </form>
+              </summary>
+              <form action={markHelpful.bind(null, a.id, id)} className="mt-2 space-y-2">
+                <fieldset>
+                  <legend className="mb-1 text-xs text-muted">どこが良かった?(複数選べます)</legend>
+                  <div className="flex flex-wrap gap-2">
+                    {HELPFUL_REASONS.map((r) => (
+                      <label key={r.key} className="check-chip">
+                        <input type="checkbox" name="reasons" value={r.key} className="sr-only" /> {r.label}
+                      </label>
+                    ))}
+                  </div>
+                </fieldset>
+                <input
+                  name="comment" maxLength={200}
+                  placeholder="一言あれば(任意)"
+                  aria-label="一言コメント(任意)"
+                  className="input text-sm"
+                />
+                <SubmitButton className="btn btn-primary text-xs" pendingText="送信中…">送る</SubmitButton>
+              </form>
+            </details>
 
             {/* 追質問スレッド */}
             <div className="space-y-2 border-l-2 border-line pl-3">
