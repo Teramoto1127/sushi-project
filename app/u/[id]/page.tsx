@@ -4,12 +4,13 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { ContributionSummary } from "@/components/ContributionSummary";
 import { parseStats } from "@/lib/contribution";
+import { isPaused } from "@/lib/daily";
 
 export const metadata: Metadata = { title: "貢献ページ" };
 
 type Row = {
   bio: string; languages: string[]; courses: string[]; topics: string[];
-  contribution_public: boolean;
+  contribution_public: boolean; consult_ok: boolean; paused_until: string | null;
   users: { display_name: string; seminar: string | null; grade: number | null } | null;
 };
 
@@ -25,7 +26,7 @@ export default async function ContributionPublicPage({
 
   const { data } = await supabase
     .from("profiles")
-    .select("bio,languages,courses,topics,contribution_public,users(display_name,seminar,grade)")
+    .select("bio,languages,courses,topics,contribution_public,consult_ok,paused_until,users(display_name,seminar,grade)")
     .eq("user_id", id)
     .maybeSingle();
   const prof = data as unknown as Row | null;
@@ -48,6 +49,9 @@ export default async function ContributionPublicPage({
           </span>
         </div>
         {prof.bio && <p className="text-sm">{prof.bio}</p>}
+        {!isMe && prof.consult_ok && !isPaused(prof.paused_until) && (
+          <Link href={`/contact/${id}`} className="btn btn-primary text-xs">✉ 相談を送る</Link>
+        )}
         <div className="flex flex-wrap gap-2">
           {[...prof.languages, ...prof.courses, ...prof.topics].map((t) => (
             <Link key={t} href={`/members?tag=${encodeURIComponent(t)}`} className="chip">#{t}</Link>
