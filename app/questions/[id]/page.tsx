@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createAnswer, markHelpful, markSolved } from "@/app/actions";
 import { SubmitButton } from "@/components/SubmitButton";
+import { AnswerForm } from "@/components/AnswerForm";
 import { StatusBadge } from "@/components/StatusBadge";
 import { HELPFUL_REASONS } from "@/lib/feedback";
 
@@ -171,15 +172,7 @@ export default async function QuestionPage({
         ))}
       </section>
 
-      <form action={createAnswer.bind(null, id, null)} className="space-y-2">
-        <label htmlFor="answer-body" className="font-semibold">回答を書く</label>
-        <textarea
-          id="answer-body" name="body" required maxLength={5000} rows={5}
-          placeholder="分かる範囲で大丈夫です。試した方法や参考になるリンクがあると助かります"
-          className="input"
-        />
-        <SubmitButton pendingText="投稿中…">回答する</SubmitButton>
-      </form>
+      <AnswerForm action={createAnswer.bind(null, id, null)} />
     </main>
   );
 }
