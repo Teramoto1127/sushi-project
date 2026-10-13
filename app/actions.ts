@@ -5,7 +5,13 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { UNIVERSITY_DOMAIN, type AuthState } from "@/lib/auth";
 import { HELPFUL_REASON_KEYS } from "@/lib/feedback";
-import { PAUSE_DAYS } from "@/lib/daily";
+import { PAUSE_DAYS, isPaused } from "@/lib/daily";
+import {
+  CONTACT_CATEGORY_IDS, MESSAGE_MAX, MESSAGE_MIN, SAME_TARGET_HOURS,
+  buildContactEmail, checkLimits, type ContactState,
+} from "@/lib/contact";
+import { isMailConfigured, sendMail } from "@/lib/mail";
+import { getUserEmail, isAdminConfigured } from "@/lib/supabase/admin";
 
 // ---- 新規登録 / ログイン(メールアドレス + パスワード) ----
 function authErrorMessage(error: { message: string; status?: number; code?: string }) {
@@ -379,4 +385,116 @@ export async function saveLearningNote(
   }
   revalidatePath(`/questions/${questionId}`);
   revalidatePath("/contribution");
+}
+
+// ---- 先輩への連絡(メール) ----
+// 先輩のメールアドレスは、ここ(サーバー)だけが取得して使う。画面や戻り値には載せない。
+// 送れるのは「相談を受け付ける」設定で、休止中でない先輩だけ。回数にも上限がある。
+const ContactSchema = z.object({
+  to: z.string().uuid(),
+  question: z.union([z.string().uuid(), z.literal("")]),
+  category: z.enum(CONTACT_CATEGORY_IDS),
+  message: z
+    .string()
+    .trim()
+    .min(MESSAGE_MIN, `相談の内容は${MESSAGE_MIN}文字以上で書いてください`)
+    .max(MESSAGE_MAX, `相談の内容は${MESSAGE_MAX}文字までです`),
+});
+
+export async function sendContactRequest(
+  _prev: ContactState,
+  formData: FormData
+): Promise<ContactState> {
+  const { supabase, user } = await requireUser();
+
+  if (formData.get("consent") !== "on") {
+    return { error: "返信のため、あなたのメールアドレスが相手に伝わることに同意してください" };
+  }
+  const parsed = ContactSchema.safeParse({
+    to: formData.get("to"),
+    question: formData.get("question") ?? "",
+    category: formData.get("category"),
+    message: formData.get("message"),
+  });
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  const { to, question, category, message } = parsed.data;
+
+  if (to === user.id) return { error: "自分には送れません" };
+  if (!user.email) return { error: "あなたのメールアドレスを確認できませんでした" };
+  if (!isMailConfigured() || !isAdminConfigured()) {
+    return { error: "メール送信の設定が終わっていないため、いまは送れません。運営に連絡してください" };
+  }
+
+  // 相手が、いま相談を受けられる状態か
+  const { data: prof } = await supabase
+    .from("profiles")
+    .select("consult_ok,paused_until")
+    .eq("user_id", to)
+    .maybeSingle();
+  if (!prof?.consult_ok) return { error: "この先輩は、いま相談を受け付けていません" };
+  if (isPaused(prof.paused_until)) return { error: "この先輩はお休み中です。休み明けにまた送ってください" };
+
+  // 送信の回数制限(自分の履歴。失敗したものは数えない)
+  const since = new Date(Date.now() - SAME_TARGET_HOURS * 60 * 60 * 1000).toISOString();
+  const { data: history } = await supabase
+    .from("contact_requests")
+    .select("to_user,created_at")
+    .eq("from_user", user.id)
+    .neq("status", "failed")
+    .gte("created_at", since);
+  const limited = checkLimits(history ?? [], to);
+  if (limited) return { error: limited };
+
+  const [{ data: me }, { data: target }] = await Promise.all([
+    supabase.from("users").select("display_name,grade,seminar").eq("id", user.id).maybeSingle(),
+    supabase.from("users").select("display_name").eq("id", to).maybeSingle(),
+  ]);
+  if (!me?.display_name) return { error: "先にプロフィールで表示名を設定してください" };
+  if (!target?.display_name) return { error: "この先輩が見つかりませんでした" };
+
+  let relatedQuestion: { id: string; title: string } | null = null;
+  if (question) {
+    const { data: q } = await supabase.from("questions").select("id,title").eq("id", question).maybeSingle();
+    relatedQuestion = q ?? null;
+  }
+
+  const targetEmail = await getUserEmail(to);
+  if (!targetEmail) return { error: "この先輩にメールを送れませんでした。時間をおいて試してください" };
+
+  // 先に記録を作る(送信が失敗しても、履歴と原因の追跡ができる)
+  const { data: row, error: insertError } = await supabase
+    .from("contact_requests")
+    .insert({
+      from_user: user.id,
+      to_user: to,
+      question_id: relatedQuestion?.id ?? null,
+      category,
+      message,
+    })
+    .select("id")
+    .single();
+  if (insertError || !row) return { error: "送信を記録できませんでした。時間をおいてもう一度お試しください" };
+
+  const { subject, text } = buildContactEmail({
+    targetName: target.display_name,
+    senderName: me.display_name,
+    senderGrade: me.grade,
+    senderSeminar: me.seminar,
+    senderEmail: user.email,
+    categoryId: category,
+    message,
+    question: relatedQuestion,
+    siteUrl: process.env.NEXT_PUBLIC_SITE_URL,
+  });
+  const result = await sendMail({ to: targetEmail, subject, text, replyTo: user.email });
+
+  await supabase
+    .from("contact_requests")
+    .update({ status: result.ok ? "sent" : "failed" })
+    .eq("id", row.id);
+
+  if (!result.ok) return { error: "メールの送信に失敗しました。時間をおいてもう一度お試しください" };
+  return {
+    message: `${target.display_name}さんにメールを送りました。返信は、あなたのメールアドレス(${user.email})に届きます。`,
+  };
 }

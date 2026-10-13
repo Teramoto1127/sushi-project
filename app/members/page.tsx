@@ -19,6 +19,7 @@ export default async function MembersPage({
 }) {
   const { tag, ok } = await searchParams;
   const supabase = await createClient();
+  const { data: { user: me } } = await supabase.auth.getUser();
 
   let query = supabase
     .from("profiles")
@@ -88,6 +89,9 @@ export default async function MembersPage({
               ))}
             </div>
             <div className="flex flex-wrap gap-3 text-xs">
+              {m.consult_ok && !isPaused(m.paused_until) && m.user_id !== me?.id && (
+                <Link href={`/contact/${m.user_id}`} className="btn btn-primary text-xs">✉ 相談を送る</Link>
+              )}
               <Link href={`/u/${m.user_id}`} className="underline">貢献を見る</Link>
               {m.portfolio_public && m.portfolio_url && (
                 <a href={m.portfolio_url} target="_blank" rel="noopener noreferrer" className="underline">

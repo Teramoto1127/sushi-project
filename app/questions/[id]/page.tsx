@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAnswer, markHelpful, markSolved, saveLearningNote } from "@/app/actions";
 import { SubmitButton } from "@/components/SubmitButton";
 import { StatusBadge } from "@/components/StatusBadge";
+import { RecommendedSeniors } from "@/components/RecommendedSeniors";
 import { HELPFUL_REASONS } from "@/lib/feedback";
 
 type Answer = {
@@ -121,6 +122,14 @@ export default async function QuestionPage({
           </details>
         )}
       </section>
+
+      {user && user.id === question.author_id && question.status !== "solved" && (
+        <RecommendedSeniors
+          question={{ title: question.title, body: question.body, tags: question.tags }}
+          questionId={id}
+          viewerId={user.id}
+        />
+      )}
 
       <section className="space-y-4" aria-labelledby="answers-heading">
         <h2 id="answers-heading" className="font-semibold">回答 ({roots.length})</h2>
