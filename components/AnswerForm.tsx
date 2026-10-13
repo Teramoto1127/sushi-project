@@ -1,12 +1,39 @@
 "use client";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { SubmitButton } from "@/components/SubmitButton";
 import { checkDraft, type DraftCheck } from "@/lib/draftCheck";
+import { BrowserAiError, isBrowserAiUsable, reviewDraftWithBrowserAi } from "@/lib/browserAi";
 
-// 回答フォーム。「分かりやすさチェック」は押したときだけ動く(端末内で完結・保存なし・採点なし)
+type RuleResult = DraftCheck & { tooShort: boolean };
+type AiState =
+  | { kind: "idle" }
+  | { kind: "running"; progress: number | null }
+  | { kind: "done"; text: string }
+  | { kind: "error"; message: string };
+
+// 回答フォーム。2つのチェックはどちらも押したときだけ動き、端末内で完結する(保存・送信なし、採点なし)。
+//  - 分かりやすさチェック: ルールベース。どの環境でも使える
+//  - AIでも見る: Chrome 内蔵AI。使えない環境ではボタン自体を出さない
 export function AnswerForm({ action }: { action: (formData: FormData) => Promise<void> }) {
   const ref = useRef<HTMLTextAreaElement>(null);
-  const [result, setResult] = useState<(DraftCheck & { tooShort: boolean }) | null>(null);
+  const runId = useRef(0); // 実行中に下書きが変わったら、古いAI結果を捨てるための印
+  const [result, setResult] = useState<RuleResult | null>(null);
+  const [aiUsable, setAiUsable] = useState(false);
+  const [ai, setAi] = useState<AiState>({ kind: "idle" });
+
+  useEffect(() => {
+    let alive = true;
+    isBrowserAiUsable().then((ok) => alive && setAiUsable(ok));
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  function clearResults() {
+    runId.current++;
+    setResult(null);
+    setAi({ kind: "idle" });
+  }
 
   function onCheck() {
     const text = ref.current?.value ?? "";
@@ -17,12 +44,35 @@ export function AnswerForm({ action }: { action: (formData: FormData) => Promise
     );
   }
 
+  async function onAiCheck() {
+    const text = (ref.current?.value ?? "").trim();
+    if (text.length < 10) {
+      setResult({ goods: [], tips: [], tooShort: true });
+      return;
+    }
+    const id = ++runId.current;
+    setAi({ kind: "running", progress: null });
+    try {
+      const out = await reviewDraftWithBrowserAi(text, (ratio) => {
+        if (runId.current === id) setAi({ kind: "running", progress: ratio });
+      });
+      if (runId.current === id) setAi({ kind: "done", text: out });
+    } catch (e) {
+      if (runId.current !== id) return;
+      setAi({
+        kind: "error",
+        message: e instanceof BrowserAiError ? e.message : "AIチェックに失敗しました",
+      });
+    }
+  }
+
   async function onSubmit(formData: FormData) {
-    setResult(null);
+    clearResults();
     await action(formData);
   }
 
   const empty = result && result.goods.length === 0 && result.tips.length === 0;
+  const running = ai.kind === "running";
 
   return (
     <form action={onSubmit} className="space-y-2">
@@ -30,7 +80,7 @@ export function AnswerForm({ action }: { action: (formData: FormData) => Promise
       <textarea
         ref={ref}
         id="answer-body" name="body" required maxLength={5000} rows={5}
-        onChange={() => result && setResult(null)}
+        onChange={() => (result || ai.kind !== "idle") && clearResults()}
         placeholder="分かる範囲で大丈夫です。試した方法や参考になるリンクがあると助かります"
         className="input"
       />
@@ -39,9 +89,14 @@ export function AnswerForm({ action }: { action: (formData: FormData) => Promise
         <button type="button" onClick={onCheck} className="btn text-sm">
           ✨ 分かりやすさチェック(任意)
         </button>
+        {aiUsable && (
+          <button type="button" onClick={onAiCheck} disabled={running} className="btn text-sm">
+            {running ? "AIが確認中…" : "🤖 AIでも見る(任意)"}
+          </button>
+        )}
       </div>
 
-      <div aria-live="polite">
+      <div aria-live="polite" className="space-y-2">
         {result && (
           <div className="space-y-2 rounded-lg border border-line p-3 text-sm">
             {result.tooShort ? (
@@ -69,6 +124,29 @@ export function AnswerForm({ action }: { action: (formData: FormData) => Promise
               文字数や書き方から機械的に見ているだけです。内容の正しさは見ていません。投稿内容は保存・送信されません。
             </p>
           </div>
+        )}
+
+        {ai.kind === "running" && (
+          <p className="rounded-lg border border-line p-3 text-sm text-muted">
+            {ai.progress === null
+              ? "AIを準備しています…"
+              : ai.progress < 1
+                ? `AIモデルを読み込み中です(初回のみ) ${Math.round(ai.progress * 100)}%`
+                : "AIが確認しています…"}
+          </p>
+        )}
+        {ai.kind === "done" && (
+          <div className="space-y-2 rounded-lg border border-line p-3 text-sm">
+            <p className="whitespace-pre-wrap">{ai.text}</p>
+            <p className="text-xs text-muted">
+              お使いのブラウザ内のAIによる提案です。見当違いのこともあるので、参考程度にしてください。下書きは端末の外に出ません。
+            </p>
+          </div>
+        )}
+        {ai.kind === "error" && (
+          <p className="rounded-lg border border-line p-3 text-sm text-muted">
+            {ai.message}。上の「分かりやすさチェック」は引き続き使えます。
+          </p>
         )}
       </div>
     </form>
