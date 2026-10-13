@@ -5,6 +5,7 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { UNIVERSITY_DOMAIN, type AuthState } from "@/lib/auth";
 import { HELPFUL_REASON_KEYS } from "@/lib/feedback";
+import { PAUSE_DAYS } from "@/lib/daily";
 
 // ---- 新規登録 / ログイン(メールアドレス + パスワード) ----
 function authErrorMessage(error: { message: string; status?: number; code?: string }) {
@@ -316,4 +317,66 @@ export async function saveProfile(formData: FormData) {
 
   revalidatePath("/members");
   redirect("/members");
+}
+
+// ---- 休止する / 再開する(先輩が自分のペースを決める) ----
+export async function setPause(formData: FormData) {
+  const { supabase, user } = await requireUser();
+  const v = String(formData.get("days") ?? "");
+  const days = Number(v);
+  let pausedUntil: string | null = null; // "resume" などは再開
+  if ((PAUSE_DAYS as readonly number[]).includes(days)) {
+    pausedUntil = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
+  }
+  const { error } = await supabase
+    .from("profiles")
+    .update({ paused_until: pausedUntil })
+    .eq("user_id", user.id);
+  if (error) throw new Error(error.message);
+  revalidatePath("/contribution");
+  revalidatePath("/questions");
+  revalidatePath("/for-you");
+  revalidatePath("/members");
+}
+
+// ---- 貢献ページの公開設定(本人が決める。初期値は非公開) ----
+export async function setContributionPublic(formData: FormData) {
+  const { supabase, user } = await requireUser();
+  const { error } = await supabase
+    .from("profiles")
+    .update({ contribution_public: formData.get("contribution_public") === "on" })
+    .eq("user_id", user.id);
+  if (error) throw new Error(error.message);
+  revalidatePath("/contribution");
+  revalidatePath(`/u/${user.id}`);
+}
+
+// ---- 学びメモ(自分の回答に、自分だけが読めるメモを残す。空で送ると消える) ----
+const NoteSchema = z.string().trim().max(200);
+
+export async function saveLearningNote(
+  answerId: string,
+  questionId: string,
+  formData: FormData
+) {
+  const { supabase, user } = await requireUser();
+  const parsed = NoteSchema.safeParse(formData.get("note") ?? "");
+  if (!parsed.success) throw new Error("メモは200文字までです");
+
+  if (parsed.data === "") {
+    await supabase.from("learning_notes").delete().eq("answer_id", answerId).eq("user_id", user.id);
+  } else {
+    const { error } = await supabase.from("learning_notes").upsert(
+      {
+        user_id: user.id,
+        answer_id: answerId,
+        note: parsed.data,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "user_id,answer_id" }
+    );
+    if (error) throw new Error(error.message);
+  }
+  revalidatePath(`/questions/${questionId}`);
+  revalidatePath("/contribution");
 }

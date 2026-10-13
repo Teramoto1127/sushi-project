@@ -30,6 +30,7 @@ export async function Header() {
                 <span className="ml-1 rounded-full bg-[var(--accent)] px-1.5 text-xs text-white">{unread}</span>
               ) : null}
             </NavLink>
+            <NavLink href="/contribution">貢献</NavLink>
             <NavLink href="/profile/edit">プロフィール</NavLink>
             <form action={signOut}>
               <button className="rounded-md px-2 py-1 text-muted hover:text-foreground">ログアウト</button>
