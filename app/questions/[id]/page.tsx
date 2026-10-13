@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { createAnswer, markHelpful, markSolved } from "@/app/actions";
+import { createAnswer, markHelpful, markSolved, saveLearningNote } from "@/app/actions";
 import { SubmitButton } from "@/components/SubmitButton";
 import { StatusBadge } from "@/components/StatusBadge";
 import { HELPFUL_REASONS } from "@/lib/feedback";
@@ -50,6 +50,18 @@ export default async function QuestionPage({
   const roots = answers.filter((a) => !a.parent_id);
   const replies = (pid: string) => answers.filter((a) => a.parent_id === pid);
   const authorName = (question.users as unknown as { display_name: string } | null)?.display_name;
+
+  // 自分の回答につけた学びメモ(自分だけが読める)
+  const myAnswerIds = roots.filter((a) => a.author_id === user?.id).map((a) => a.id);
+  const { data: noteRows } =
+    user && myAnswerIds.length > 0
+      ? await supabase
+          .from("learning_notes")
+          .select("answer_id,note")
+          .eq("user_id", user.id)
+          .in("answer_id", myAnswerIds)
+      : { data: [] as { answer_id: string; note: string }[] };
+  const noteOf = new Map((noteRows ?? []).map((n) => [n.answer_id, n.note]));
 
   return (
     <main className="mx-auto w-full max-w-2xl space-y-6 p-4 sm:p-6">
@@ -148,6 +160,26 @@ export default async function QuestionPage({
                 <SubmitButton className="btn btn-primary text-xs" pendingText="送信中…">送る</SubmitButton>
               </form>
             </details>
+
+            {user?.id === a.author_id && (
+              <details className="rounded-lg border border-line p-2">
+                <summary className="btn cursor-pointer text-xs">
+                  📝 教えて学んだことをメモ{noteOf.has(a.id) ? "(記入済み)" : ""}
+                </summary>
+                <form action={saveLearningNote.bind(null, a.id, id)} className="mt-2 space-y-2">
+                  <label htmlFor={`note-${a.id}`} className="text-xs text-muted">
+                    この回答で気づいたこと・復習になったこと(自分だけに表示・200文字まで)
+                  </label>
+                  <textarea
+                    id={`note-${a.id}`} name="note" maxLength={200} rows={2}
+                    defaultValue={noteOf.get(a.id) ?? ""}
+                    placeholder="例: 説明してみて、リストの参照渡しを理解し直せた"
+                    className="input text-sm"
+                  />
+                  <SubmitButton className="btn btn-primary text-xs" pendingText="保存中…">保存</SubmitButton>
+                </form>
+              </details>
+            )}
 
             {/* 追質問スレッド */}
             <div className="space-y-2 border-l-2 border-line pl-3">

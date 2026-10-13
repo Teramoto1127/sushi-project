@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { StatusBadge } from "@/components/StatusBadge";
+import { TodayQuestion } from "@/components/TodayQuestion";
 
 export const metadata: Metadata = { title: "質問一覧" };
 
@@ -54,6 +55,8 @@ export default async function QuestionsPage({
         <h1 className="text-xl font-bold">質問一覧</h1>
         <Link href="/questions/new" className="btn btn-primary">＋ 質問する</Link>
       </div>
+
+      <TodayQuestion />
 
       <form role="search" className="flex gap-2">
         <input type="hidden" name="status" value={activeStatus} />

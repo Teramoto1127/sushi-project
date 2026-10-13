@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { isPaused } from "@/lib/daily";
 
 export const metadata: Metadata = { title: "先輩を探す" };
 
 type Row = {
   user_id: string; languages: string[]; courses: string[]; topics: string[];
   bio: string; consult_ok: boolean; portfolio_url: string | null; portfolio_public: boolean;
+  paused_until: string | null;
   users: { display_name: string; seminar: string | null; grade: number | null } | null;
 };
 
@@ -20,7 +22,7 @@ export default async function MembersPage({
 
   let query = supabase
     .from("profiles")
-    .select("user_id,languages,courses,topics,bio,consult_ok,portfolio_url,portfolio_public,users(display_name,seminar,grade)");
+    .select("user_id,languages,courses,topics,bio,consult_ok,portfolio_url,portfolio_public,paused_until,users(display_name,seminar,grade)");
   if (ok === "1") query = query.eq("consult_ok", true);
   if (tag) {
     const safe = tag.replace(/[^\p{L}\p{N}_+#.\-]/gu, ""); // or() 構文を壊さないため
@@ -67,10 +69,16 @@ export default async function MembersPage({
               <span className="text-xs text-muted">
                 {m.users!.grade}年{m.users!.seminar ? `・${m.users!.seminar}` : ""}
               </span>
-              {m.consult_ok && (
-                <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
-                  相談OK
+              {isPaused(m.paused_until) ? (
+                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                  🌙 休止中
                 </span>
+              ) : (
+                m.consult_ok && (
+                  <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                    相談OK
+                  </span>
+                )
               )}
             </div>
             {m.bio && <p className="text-sm">{m.bio}</p>}
@@ -79,11 +87,14 @@ export default async function MembersPage({
                 <Link key={t} href={`/members?tag=${encodeURIComponent(t)}`} className="chip">#{t}</Link>
               ))}
             </div>
-            {m.portfolio_public && m.portfolio_url && (
-              <a href={m.portfolio_url} target="_blank" rel="noopener noreferrer" className="inline-block text-xs underline">
-                ポートフォリオ ↗
-              </a>
-            )}
+            <div className="flex flex-wrap gap-3 text-xs">
+              <Link href={`/u/${m.user_id}`} className="underline">貢献を見る</Link>
+              {m.portfolio_public && m.portfolio_url && (
+                <a href={m.portfolio_url} target="_blank" rel="noopener noreferrer" className="underline">
+                  ポートフォリオ ↗
+                </a>
+              )}
+            </div>
           </li>
         ))}
       </ul>

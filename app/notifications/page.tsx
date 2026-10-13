@@ -34,7 +34,10 @@ export default async function NotificationsPage() {
           </form>
         )}
       </div>
-      <p className="text-sm text-muted">あなたの回答への、後輩からのフィードバックです。</p>
+      <p className="text-sm text-muted">
+        あなたの回答への、後輩からのフィードバックです。
+        <Link href="/contribution" className="ml-2 underline">あなたの貢献をまとめて見る →</Link>
+      </p>
 
       <ul className="space-y-3">
         {items.map((n) => (
