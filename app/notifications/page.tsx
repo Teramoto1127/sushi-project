@@ -8,7 +8,7 @@ import { reasonLabel } from "@/lib/feedback";
 export const metadata: Metadata = { title: "通知" };
 
 type Row = {
-  id: string; type: "helpful" | "solved"; question_id: string;
+  id: string; type: "helpful" | "solved" | "answer" | "reply"; question_id: string;
   reasons: string[]; comment: string | null; read_at: string | null;
   questions: { title: string } | null;
   answers: { body: string } | null;
@@ -35,7 +35,7 @@ export default async function NotificationsPage() {
         )}
       </div>
       <p className="text-sm text-muted">
-        あなたの回答への、後輩からのフィードバックです。
+        あなたの質問への回答や、あなたの回答へのフィードバックです。
         <Link href="/contribution" className="ml-2 underline">あなたの貢献をまとめて見る →</Link>
       </p>
 
@@ -49,12 +49,16 @@ export default async function NotificationsPage() {
               <p className="text-sm font-semibold">
                 {n.type === "helpful"
                   ? "👍 後輩から「助かった」が届きました"
-                  : "✓ あなたの回答で質問が解決しました"}
+                  : n.type === "solved"
+                    ? "✓ あなたの回答で質問が解決しました"
+                    : n.type === "answer"
+                      ? "💬 あなたの質問に回答が付きました"
+                      : "↩ 返信が付きました"}
               </p>
               <p className="text-xs text-muted">質問: {n.questions?.title ?? "(削除された質問)"}</p>
               {n.answers?.body && (
                 <p className="line-clamp-2 border-l-2 border-line pl-2 text-xs text-muted">
-                  あなたの回答: {n.answers.body}
+                  {n.type === "answer" || n.type === "reply" ? "新しい書き込み" : "あなたの回答"}: {n.answers.body}
                 </p>
               )}
               {n.reasons.length > 0 && (
