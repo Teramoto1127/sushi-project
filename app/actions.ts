@@ -12,6 +12,7 @@ import {
 } from "@/lib/contact";
 import { isMailConfigured, sendMail } from "@/lib/mail";
 import { CheckinSchema, weekStart } from "@/lib/research";
+import { notificationTargets } from "@/lib/notify";
 import { getUserEmail, isAdminConfigured } from "@/lib/supabase/admin";
 
 // ---- 新規登録 / ログイン(メールアドレス + パスワード) ----
@@ -148,13 +149,46 @@ export async function createAnswer(
   const body = z.string().trim().min(1).max(5000).safeParse(formData.get("body"));
   if (!body.success) throw new Error("本文は1〜5000文字で入力してください");
 
-  const { error } = await supabase.from("answers").insert({
-    question_id: questionId,
-    parent_id: parentId,
-    body: body.data,
-    author_id: user.id,
-  });
+  const { data: created, error } = await supabase
+    .from("answers")
+    .insert({
+      question_id: questionId,
+      parent_id: parentId,
+      body: body.data,
+      author_id: user.id,
+    })
+    .select("id")
+    .single();
   if (error) throw new Error(error.message);
+
+  // 質問者(と、返信先の回答者)に通知する。通知に失敗しても、回答の投稿は成功のままにする
+  try {
+    const [{ data: q }, parent] = await Promise.all([
+      supabase.from("questions").select("author_id").eq("id", questionId).single(),
+      parentId
+        ? supabase.from("answers").select("author_id").eq("id", parentId).single()
+        : Promise.resolve({ data: null }),
+    ]);
+    const targets = notificationTargets({
+      actor: user.id,
+      questionAuthor: q?.author_id ?? null,
+      parentAuthor: parentId ? parent.data?.author_id ?? null : null,
+    });
+    if (targets.length > 0) {
+      await supabase.from("notifications").insert(
+        targets.map((t) => ({
+          user_id: t.user_id,
+          actor_id: user.id,
+          type: t.type,
+          question_id: questionId,
+          answer_id: created.id,
+          reasons: [],
+        }))
+      );
+    }
+  } catch {
+    // 通知は補助的なもの
+  }
 
   // 最初の回答が付いたら status を answered に(質問者以外の回答のみ)
   if (!parentId) {
@@ -166,6 +200,7 @@ export async function createAnswer(
       .neq("author_id", user.id);
   }
   revalidatePath(`/questions/${questionId}`);
+  revalidatePath("/notifications");
 }
 
 // ---- 助かった(理由 + 任意の一言) ----
