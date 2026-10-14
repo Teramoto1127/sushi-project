@@ -11,6 +11,7 @@ import {
   buildContactEmail, checkLimits, type ContactState,
 } from "@/lib/contact";
 import { isMailConfigured, sendMail } from "@/lib/mail";
+import { CheckinSchema, weekStart } from "@/lib/research";
 import { getUserEmail, isAdminConfigured } from "@/lib/supabase/admin";
 
 // ---- 新規登録 / ログイン(メールアドレス + パスワード) ----
@@ -497,4 +498,65 @@ export async function sendContactRequest(
   return {
     message: `${target.display_name}さんにメールを送りました。返信は、あなたのメールアドレス(${user.email})に届きます。`,
   };
+}
+
+// ---- 研究への協力(毎週の短い回答)。同意した人だけが対象。いつでも抜けられる ----
+export async function joinResearch(formData: FormData) {
+  const { supabase, user } = await requireUser();
+  if (formData.get("consent") !== "on") throw new Error("同意にチェックを入れてください");
+  const { error } = await supabase
+    .from("research_participants")
+    .upsert(
+      { user_id: user.id, consented_at: new Date().toISOString(), withdrawn_at: null },
+      { onConflict: "user_id" }
+    );
+  if (error) throw new Error(error.message);
+  revalidatePath("/research");
+  revalidatePath("/", "layout");
+}
+
+export async function submitCheckin(formData: FormData) {
+  const { supabase, user } = await requireUser();
+  const { data: p } = await supabase
+    .from("research_participants")
+    .select("withdrawn_at")
+    .eq("user_id", user.id)
+    .maybeSingle();
+  if (!p || p.withdrawn_at) throw new Error("研究への参加が確認できません");
+
+  const week = weekStart();
+  const skipped = formData.get("skip") === "1";
+  let row: Record<string, unknown>;
+  if (skipped) {
+    row = { skipped: true, ease: null, reason: null, wish: null };
+  } else {
+    const parsed = CheckinSchema.safeParse({
+      ease: formData.get("ease"),
+      reason: formData.get("reason") ?? "",
+      wish: formData.get("wish") ?? "",
+    });
+    if (!parsed.success) throw new Error(parsed.error.issues[0]?.message ?? "入力を確認してください");
+    row = { skipped: false, ...parsed.data };
+  }
+  const { error } = await supabase
+    .from("research_checkins")
+    .upsert({ user_id: user.id, week_start: week, ...row }, { onConflict: "user_id,week_start" });
+  if (error) throw new Error(error.message);
+  revalidatePath("/research");
+  revalidatePath("/", "layout");
+}
+
+export async function withdrawResearch(formData: FormData) {
+  const { supabase, user } = await requireUser();
+  const { error } = await supabase
+    .from("research_participants")
+    .update({ withdrawn_at: new Date().toISOString() })
+    .eq("user_id", user.id);
+  if (error) throw new Error(error.message);
+  if (formData.get("delete_data") === "on") {
+    const { error: e2 } = await supabase.from("research_checkins").delete().eq("user_id", user.id);
+    if (e2) throw new Error(e2.message);
+  }
+  revalidatePath("/research");
+  revalidatePath("/", "layout");
 }
