@@ -1,16 +1,19 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f8fafc;
-  --foreground: #0f172a;
+  --background: #f5f4ef;
+  --foreground: #1b2220;
   --surface: #ffffff;
-  --muted: #64748b;
-  --border: #e2e8f0;
-  --accent: #ea580c;
-  --accent-hover: #c2410c;
-  --accent-soft: #ffedd5;
-  --accent-soft-fg: #9a3412;
-  --ring: #fb923c;
+  --muted: #5b6560;
+  --border: #dad8cf;
+  --border-strong: #b9b6aa;
+  --accent: #1d6b57;
+  --accent-hover: #124a3b;
+  --accent-soft: #e3efea;
+  --accent-soft-fg: #124a3b;
+  --tag-bg: #ebeae3;
+  --danger: #b3261e;
+  --ring: #1d6b57;
 }
 
 @theme inline {
@@ -20,36 +23,42 @@
   --color-muted: var(--muted);
   --color-line: var(--border);
   --color-accent: var(--accent);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: "Noto Sans JP", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", Meiryo, sans-serif;
+  --font-heading: "Zen Kaku Gothic New", "Noto Sans JP", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", Meiryo, sans-serif;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0b1120;
-    --foreground: #e5e7eb;
-    --surface: #111827;
-    --muted: #94a3b8;
-    --border: #1f2937;
-    --accent: #fb923c;
-    --accent-hover: #fdba74;
-    --accent-soft: #431407;
-    --accent-soft-fg: #fdba74;
-    --ring: #fb923c;
+    --background: #131716;
+    --foreground: #e8ebe9;
+    --surface: #1b211f;
+    --muted: #a3aea8;
+    --border: #2d3532;
+    --border-strong: #4a5550;
+    --accent: #5fbf9f;
+    --accent-hover: #86d3b9;
+    --accent-soft: #1d3a31;
+    --accent-soft-fg: #bfe8d9;
+    --tag-bg: #262e2b;
+    --danger: #f2877f;
+    --ring: #5fbf9f;
   }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family:
-    var(--font-geist-sans), "Hiragino Sans", "Hiragino Kaku Gothic ProN",
-    "Noto Sans JP", Meiryo, sans-serif;
-  line-height: 1.7;
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.8;
+}
+
+h1, h2 {
+  font-family: var(--font-heading);
 }
 
 :focus-visible {
-  outline: 2px solid var(--ring);
+  outline: 3px solid var(--ring);
   outline-offset: 2px;
 }
 
@@ -57,21 +66,23 @@ body {
 .card {
   border: 1px solid var(--border);
   background: var(--surface);
-  border-radius: 0.75rem;
+  border-radius: 0.625rem;
   padding: 1rem;
 }
 a.card:hover,
 .card-hover:hover {
-  border-color: var(--accent);
+  border-color: var(--border-strong);
 }
 
 .input {
   width: 100%;
-  border: 1px solid var(--border);
+  min-height: 2.75rem;
+  border: 1px solid var(--border-strong);
   background: var(--surface);
   color: inherit;
   border-radius: 0.5rem;
-  padding: 0.55rem 0.75rem;
+  padding: 0.55rem 0.85rem;
+  font-size: 1rem;
 }
 .input::placeholder {
   color: var(--muted);
@@ -82,17 +93,20 @@ a.card:hover,
   align-items: center;
   justify-content: center;
   gap: 0.4rem;
-  border: 1px solid var(--border);
+  min-height: 2.75rem;
+  border: 1px solid var(--border-strong);
   background: var(--surface);
   color: inherit;
   border-radius: 0.5rem;
-  padding: 0.45rem 0.9rem;
-  font-size: 0.875rem;
+  padding: 0.4rem 1rem;
+  font-size: 0.9375rem;
+  font-weight: 500;
   cursor: pointer;
   transition: background-color 0.15s, border-color 0.15s, opacity 0.15s;
 }
 .btn:hover {
   border-color: var(--accent);
+  color: var(--accent);
 }
 .btn:disabled {
   opacity: 0.55;
@@ -102,46 +116,71 @@ a.card:hover,
   background: var(--accent);
   border-color: var(--accent);
   color: #fff;
-  font-weight: 600;
+  font-weight: 700;
 }
 .btn-primary:hover {
   background: var(--accent-hover);
   border-color: var(--accent-hover);
+  color: #fff;
+}
+@media (prefers-color-scheme: dark) {
+  .btn-primary,
+  .btn-primary:hover {
+    color: #0b1713;
+  }
 }
 
+/* タグ・小さなラベル。色で飾らず、薄い地に文字だけ */
 .chip {
   display: inline-block;
-  border-radius: 9999px;
-  padding: 0.05rem 0.6rem;
-  font-size: 0.75rem;
-  background: var(--accent-soft);
-  color: var(--accent-soft-fg);
+  border-radius: 0.25rem;
+  padding: 0 0.5rem;
+  font-size: 0.8125rem;
+  line-height: 1.6;
+  background: var(--tag-bg);
+  color: var(--muted);
 }
-.chip:hover {
+a.chip:hover {
+  color: var(--accent);
   text-decoration: underline;
 }
 
 .check-chip {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
-  border: 1px solid var(--border);
+  gap: 0.4rem;
+  min-height: 2.5rem;
+  border: 1px solid var(--border-strong);
   background: var(--surface);
-  border-radius: 9999px;
-  padding: 0.2rem 0.75rem;
-  font-size: 0.875rem;
+  border-radius: 0.5rem;
+  padding: 0.2rem 0.85rem;
+  font-size: 0.9375rem;
   cursor: pointer;
 }
 .check-chip:has(input:checked) {
   background: var(--accent-soft);
   border-color: var(--accent);
   color: var(--accent-soft-fg);
+  font-weight: 700;
 }
 .check-chip:has(input:focus-visible) {
-  outline: 2px solid var(--ring);
+  outline: 3px solid var(--ring);
   outline-offset: 2px;
 }
 .check-chip:has(input:disabled) {
   opacity: 0.45;
   cursor: not-allowed;
+}
+
+/* 質問の行。枠で囲まず、細い線で区切る */
+.row-link {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  padding: 0.875rem 0;
+  color: inherit;
+}
+.row-link:hover .row-title {
+  color: var(--accent);
+  text-decoration: underline;
 }

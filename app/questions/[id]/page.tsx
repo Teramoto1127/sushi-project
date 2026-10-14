@@ -8,6 +8,7 @@ import { AnswerForm } from "@/components/AnswerForm";
 import { StatusBadge } from "@/components/StatusBadge";
 import { RecommendedSeniors } from "@/components/RecommendedSeniors";
 import { HELPFUL_REASONS } from "@/lib/feedback";
+import { BackLink } from "@/components/BackLink";
 
 type Answer = {
   id: string; parent_id: string | null; body: string; author_id: string;
@@ -66,18 +67,18 @@ export default async function QuestionPage({
   const noteOf = new Map((noteRows ?? []).map((n) => [n.answer_id, n.note]));
 
   return (
-    <main className="mx-auto w-full max-w-2xl space-y-6 p-4 sm:p-6">
-      <Link href="/questions" className="text-sm text-muted hover:text-foreground">← 質問一覧に戻る</Link>
+    <main className="mx-auto w-full max-w-2xl space-y-6 p-4 md:p-6">
+      <BackLink href="/questions">質問一覧</BackLink>
 
-      <section className="card space-y-3">
-        <div className="flex flex-wrap items-center gap-2 text-xs text-muted">
+      <section className="space-y-3">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px] text-muted">
           <StatusBadge status={question.status} />
           <span>{authorName || "名無し"}</span>
         </div>
-        <h1 className="text-xl font-bold">{question.title}</h1>
-        <p className="whitespace-pre-wrap">{question.body}</p>
+        <h1 className="text-[22px] font-bold leading-snug">{question.title}</h1>
+        <p className="whitespace-pre-wrap leading-[1.85]">{question.body}</p>
         {question.tags.length > 0 && (
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-1.5">
             {question.tags.map((t: string) => (
               <Link key={t} href={`/questions?tag=${encodeURIComponent(t)}`} className="chip">#{t}</Link>
             ))}
@@ -85,15 +86,15 @@ export default async function QuestionPage({
         )}
 
         {question.solved_note && (
-          <div className="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-900 dark:bg-emerald-950 dark:text-emerald-200">
-            <p className="mb-1 text-xs font-semibold">✓ 解決報告</p>
+          <div className="rounded-lg bg-[var(--accent-soft)] p-3 text-sm text-[var(--accent-soft-fg)]">
+            <p className="mb-1 text-xs font-semibold">解決報告</p>
             <p className="whitespace-pre-wrap">{question.solved_note}</p>
           </div>
         )}
 
         {user?.id === question.author_id && question.status !== "solved" && (
           <details className="rounded-lg border border-line p-3">
-            <summary className="btn cursor-pointer">✓ 解決済みにする</summary>
+            <summary className="btn cursor-pointer">解決済みにする</summary>
             <form action={markSolved.bind(null, id)} className="mt-3 space-y-3">
               <fieldset className="space-y-1 text-sm">
                 <legend className="mb-1 font-semibold">どの回答で解決しましたか?</legend>
@@ -138,17 +139,17 @@ export default async function QuestionPage({
           <p className="card text-sm text-muted">まだ回答がありません。最初の回答を書いてみましょう。</p>
         )}
         {roots.map((a) => (
-          <article key={a.id} className="card space-y-3">
+          <article key={a.id} className="space-y-3 border-t border-line py-4">
             <p className="text-xs text-muted">
               {a.users?.display_name || "名無し"}
               {a.author_id === question.author_id && <span className="chip ml-2">質問者</span>}
-              {a.id === question.solved_answer_id && <span className="chip ml-2">✓ 解決の決め手</span>}
+              {a.id === question.solved_answer_id && <span className="chip ml-2">解決の決め手</span>}
             </p>
             <p className="whitespace-pre-wrap">{a.body}</p>
 
             <details>
               <summary className="btn cursor-pointer text-xs">
-                👍 助かった ({a.answer_helpful[0]?.count ?? 0})
+                助かった ({a.answer_helpful[0]?.count ?? 0})
               </summary>
               <form action={markHelpful.bind(null, a.id, id)} className="mt-2 space-y-2">
                 <fieldset>
@@ -174,7 +175,7 @@ export default async function QuestionPage({
             {user?.id === a.author_id && (
               <details className="rounded-lg border border-line p-2">
                 <summary className="btn cursor-pointer text-xs">
-                  📝 教えて学んだことをメモ{noteOf.has(a.id) ? "(記入済み)" : ""}
+                  学んだことをメモ{noteOf.has(a.id) ? "(記入済み)" : ""}
                 </summary>
                 <form action={saveLearningNote.bind(null, a.id, id)} className="mt-2 space-y-2">
                   <label htmlFor={`note-${a.id}`} className="text-xs text-muted">

@@ -6,6 +6,7 @@ import { ContactForm } from "@/components/ContactForm";
 import { isPaused } from "@/lib/daily";
 import { isMailConfigured } from "@/lib/mail";
 import { isAdminConfigured } from "@/lib/supabase/admin";
+import { BackLink } from "@/components/BackLink";
 
 export const metadata: Metadata = { title: "先輩に相談する" };
 
@@ -45,8 +46,8 @@ export default async function ContactPage({
   ]);
 
   return (
-    <main className="mx-auto w-full max-w-2xl space-y-4 p-4 sm:p-6">
-      <Link href="/members" className="text-sm text-muted hover:text-foreground">← 先輩一覧に戻る</Link>
+    <main className="mx-auto w-full max-w-2xl space-y-4 p-4 md:p-6">
+      <BackLink href="/members">先輩一覧</BackLink>
       <h1 className="text-xl font-bold">先輩に相談する</h1>
 
       {!target?.display_name ? (
@@ -60,7 +61,7 @@ export default async function ContactPage({
         </Notice>
       ) : isPaused(prof.paused_until) ? (
         <Notice>
-          <p>🌙 {target.display_name}さんはお休み中です。休み明けにまた送ってください。</p>
+          <p>{target.display_name}さんはお休み中です。休み明けにまた送ってください。</p>
         </Notice>
       ) : !isMailConfigured() || !isAdminConfigured() ? (
         <Notice>

@@ -33,7 +33,7 @@ export default async function MembersPage({
   const members = ((data ?? []) as unknown as Row[]).filter((m) => m.users?.display_name);
 
   return (
-    <main className="mx-auto w-full max-w-2xl space-y-4 p-4 sm:p-6">
+    <main className="mx-auto w-full max-w-2xl space-y-4 p-4 md:p-6">
       <div>
         <h1 className="text-xl font-bold">先輩を探す</h1>
         <p className="text-sm text-muted">得意な言語・授業・分野のタグで探せます。「相談OK」の人には気軽に声をかけてみましょう。</p>
@@ -72,7 +72,7 @@ export default async function MembersPage({
               </span>
               {isPaused(m.paused_until) ? (
                 <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-300">
-                  🌙 休止中
+                  休止中
                 </span>
               ) : (
                 m.consult_ok && (
@@ -90,7 +90,7 @@ export default async function MembersPage({
             </div>
             <div className="flex flex-wrap gap-3 text-xs">
               {m.consult_ok && !isPaused(m.paused_until) && m.user_id !== me?.id && (
-                <Link href={`/contact/${m.user_id}`} className="btn btn-primary text-xs">✉ 相談を送る</Link>
+                <Link href={`/contact/${m.user_id}`} className="btn btn-primary text-xs">メールで相談</Link>
               )}
               <Link href={`/u/${m.user_id}`} className="underline">貢献を見る</Link>
               {m.portfolio_public && m.portfolio_url && (

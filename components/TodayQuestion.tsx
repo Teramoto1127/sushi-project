@@ -16,7 +16,7 @@ export async function TodayQuestion() {
   if (fy.paused) {
     return (
       <p className="card text-sm text-muted">
-        🌙 お休み中です。いつでも戻れます。
+        お休み中です。いつでも戻れます。
         <Link href="/contribution" className="ml-2 underline">再開・設定</Link>
       </p>
     );
@@ -36,18 +36,16 @@ export async function TodayQuestion() {
 
   return (
     <section className="card space-y-2" aria-labelledby="today-heading">
-      <div className="flex items-center justify-between gap-2">
-        <h2 id="today-heading" className="text-sm font-semibold">☀️ 今日の1問</h2>
-        <Link href="/for-you" className="text-xs underline">得意分野の質問をもっと見る</Link>
-      </div>
-      <Link href={`/questions/${pick.id}`} className="block space-y-2 hover:opacity-80">
-        <p className="font-medium">{pick.title}</p>
-        <div className="flex flex-wrap items-center gap-2">
+      <h2 id="today-heading" className="text-sm font-bold text-muted">今日、答えられそうな質問</h2>
+      <Link href={`/questions/${pick.id}`} className="block space-y-1 hover:text-[var(--accent)]">
+        <p className="font-bold leading-snug">{pick.title}</p>
+        <p className="flex flex-wrap items-center gap-x-3 text-[13px] text-muted">
           <StatusBadge status={pick.status} />
-          {pick.tags.map((t) => (
-            <span key={t} className="chip">#{t}</span>
-          ))}
-        </div>
+          <span>{pick.tags.map((t) => `#${t}`).join(" ")}</span>
+        </p>
+      </Link>
+      <Link href="/for-you" className="inline-flex min-h-11 items-center text-sm font-bold text-[var(--accent)] underline">
+        得意分野の質問をもっと見る
       </Link>
     </section>
   );
