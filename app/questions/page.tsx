@@ -3,6 +3,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { StatusBadge } from "@/components/StatusBadge";
 import { TodayQuestion } from "@/components/TodayQuestion";
+import { RESEARCH_MARKER } from "@/lib/research";
 
 export const metadata: Metadata = { title: "質問一覧" };
 
@@ -36,9 +37,24 @@ export default async function QuestionsPage({
   if (q) query = query.ilike("title", `%${q.replace(/[%_]/g, "")}%`);
   if (activeStatus) query = query.eq("status", activeStatus);
 
-  const { data } = await query;
-  const questions = (data ?? []) as unknown as Row[];
   const filtered = Boolean(tag || q || activeStatus);
+
+  // 研究のフィードバックを募る質問は、絞り込みがないときだけ、一覧の上に出す(解決済みは出さない)
+  const [{ data }, { data: pinnedData }] = await Promise.all([
+    query,
+    filtered
+      ? Promise.resolve({ data: [] })
+      : supabase
+          .from("questions")
+          .select("id,title,tags,status,users(display_name)")
+          .ilike("body", `%${RESEARCH_MARKER}%`)
+          .neq("status", "solved")
+          .order("created_at", { ascending: false })
+          .limit(5),
+  ]);
+  const pinned = (pinnedData ?? []) as unknown as Row[];
+  const pinnedIds = new Set(pinned.map((p) => p.id));
+  const questions = ((data ?? []) as unknown as Row[]).filter((r) => !pinnedIds.has(r.id));
 
   const tabHref = (value: string) => {
     const p = new URLSearchParams();
@@ -98,6 +114,28 @@ export default async function QuestionsPage({
         </p>
       )}
 
+      {pinned.length > 0 && (
+        <section aria-labelledby="research-heading" className="space-y-2">
+          <h2 id="research-heading" className="text-sm font-semibold">🔬 研究へのフィードバックを募集中</h2>
+          <ul className="space-y-3">
+            {pinned.map((item) => (
+              <li key={item.id}>
+                <Link href={`/questions/${item.id}`} className="card block border-[var(--accent)]">
+                  <span className="font-semibold">{item.title}</span>
+                  <span className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted">
+                    <StatusBadge status={item.status} />
+                    <span>{item.users?.display_name || "名無し"}</span>
+                    {item.tags.map((t) => (
+                      <span key={t} className="chip">#{t}</span>
+                    ))}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       <ul className="space-y-3">
         {questions.map((item) => (
           <li key={item.id}>
@@ -115,7 +153,7 @@ export default async function QuestionsPage({
         ))}
       </ul>
 
-      {questions.length === 0 && (
+      {questions.length === 0 && pinned.length === 0 && (
         <div className="card py-10 text-center text-sm text-muted">
           <p>{filtered ? "条件に合う質問が見つかりませんでした" : "まだ質問がありません"}</p>
           <Link href="/questions/new" className="btn btn-primary mt-4">

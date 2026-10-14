@@ -48,3 +48,7 @@ export const CONSENT_POINTS = [
   "参加しなくても、知恵袋の機能は同じように使えます。",
   "回答しなかった週は「今週は答えない」を選べます。理由は聞きません。",
 ] as const;
+
+// 「自分の研究へのフィードバック」の質問テンプレートが入れる見出し。質問の見分けに使う。
+export const RESEARCH_MARKER = "【研究のテーマ】";
+export const isResearchBody = (body: string): boolean => body.includes(RESEARCH_MARKER);
