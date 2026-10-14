@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { setContributionPublic, setPause } from "@/app/actions";
+import { setContributionPublic, setPause, signOut } from "@/app/actions";
 import { SubmitButton } from "@/components/SubmitButton";
 import { ContributionSummary } from "@/components/ContributionSummary";
 import {
@@ -28,7 +28,7 @@ function MonthCard({ s, trend }: { s: MonthSummary; trend?: string | null }) {
       ) : (
         <>
           <p className="text-sm">
-            👍 {s.helpful} 件 / ✅ 解決の決め手 {s.solved} 件
+            「助かった」{s.helpful} 件 / 解決の決め手 {s.solved} 件
           </p>
           {trend && <p className="text-xs text-muted">{trend}</p>}
           {s.quotes.length > 0 && (
@@ -78,7 +78,7 @@ export default async function ContributionPage() {
   const paused = isPaused(pausedUntil, now);
 
   return (
-    <main className="mx-auto w-full max-w-2xl space-y-8 p-4 sm:p-6">
+    <main className="mx-auto w-full max-w-2xl space-y-8 p-4 md:p-6">
       <div className="space-y-1">
         <h1 className="text-xl font-bold">あなたの貢献</h1>
         <p className="text-sm text-muted">
@@ -116,11 +116,11 @@ export default async function ContributionPage() {
               <li key={i}>
                 {n.answers ? (
                   <Link href={`/questions/${n.answers.question_id}`} className="card block space-y-1">
-                    <p className="whitespace-pre-wrap text-sm">📝 {n.note}</p>
+                    <p className="whitespace-pre-wrap text-sm">{n.note}</p>
                     <p className="line-clamp-1 text-xs text-muted">回答: {n.answers.body}</p>
                   </Link>
                 ) : (
-                  <p className="card whitespace-pre-wrap text-sm">📝 {n.note}</p>
+                  <p className="card whitespace-pre-wrap text-sm">{n.note}</p>
                 )}
               </li>
             ))}
@@ -175,6 +175,16 @@ export default async function ContributionPage() {
           </label>
           <SubmitButton className="btn text-xs" pendingText="保存中…">保存</SubmitButton>
         </form>
+      </section>
+
+      <section className="card space-y-3 text-sm" aria-labelledby="account-heading">
+        <h2 id="account-heading" className="font-semibold">アカウント</h2>
+        <div className="flex flex-wrap gap-2">
+          <Link href="/profile/edit" className="btn">プロフィールを編集</Link>
+          <form action={signOut}>
+            <button className="btn">ログアウト</button>
+          </form>
+        </div>
       </section>
 
       <section className="card space-y-2 text-sm">

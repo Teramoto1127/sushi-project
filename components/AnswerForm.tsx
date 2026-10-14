@@ -75,7 +75,7 @@ export function AnswerForm({ action }: { action: (formData: FormData) => Promise
   const running = ai.kind === "running";
 
   return (
-    <form action={onSubmit} className="space-y-2">
+    <form action={onSubmit} className="space-y-2 border-t border-line pt-5">
       <label htmlFor="answer-body" className="font-semibold">回答を書く</label>
       <textarea
         ref={ref}
@@ -87,11 +87,11 @@ export function AnswerForm({ action }: { action: (formData: FormData) => Promise
       <div className="flex flex-wrap items-center gap-2">
         <SubmitButton pendingText="投稿中…">回答する</SubmitButton>
         <button type="button" onClick={onCheck} className="btn text-sm">
-          ✨ 分かりやすさチェック(任意)
+          書き方をチェック(任意)
         </button>
         {aiUsable && (
           <button type="button" onClick={onAiCheck} disabled={running} className="btn text-sm">
-            {running ? "AIが確認中…" : "🤖 AIでも見る(任意)"}
+            {running ? "AIが確認中…" : "AIでも見る(任意)"}
           </button>
         )}
       </div>
@@ -106,14 +106,14 @@ export function AnswerForm({ action }: { action: (formData: FormData) => Promise
                 {result.goods.length > 0 && (
                   <ul className="space-y-1">
                     {result.goods.map((g) => (
-                      <li key={g}>👍 {g}</li>
+                      <li key={g}><b>良い点: </b>{g}</li>
                     ))}
                   </ul>
                 )}
                 {result.tips.length > 0 && (
                   <ul className="space-y-1">
                     {result.tips.map((t) => (
-                      <li key={t}>💡 {t}</li>
+                      <li key={t}><b>提案: </b>{t}</li>
                     ))}
                   </ul>
                 )}

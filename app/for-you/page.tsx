@@ -17,7 +17,7 @@ export default async function ForYouPage() {
   const fy = await fetchForYou(supabase, user.id);
 
   return (
-    <main className="mx-auto w-full max-w-2xl space-y-4 p-4 sm:p-6">
+    <main className="mx-auto w-full max-w-2xl space-y-4 p-4 md:p-6">
       <div>
         <h1 className="text-xl font-bold">得意分野の質問</h1>
         <p className="text-sm text-muted">
@@ -27,7 +27,7 @@ export default async function ForYouPage() {
 
       {fy.paused ? (
         <div className="card space-y-3 text-sm">
-          <p>🌙 お休み中です。休み明けに、また覗いてください。</p>
+          <p>お休み中です。休み明けに、また覗いてください。</p>
           <form action={setPause}>
             <input type="hidden" name="days" value="resume" />
             <SubmitButton className="btn btn-primary text-xs" pendingText="更新中…">再開する</SubmitButton>

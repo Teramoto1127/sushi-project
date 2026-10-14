@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { joinResearch, submitCheckin, withdrawResearch } from "@/app/actions";
 import { SubmitButton } from "@/components/SubmitButton";
 import { CONSENT_POINTS, EASE_LABELS, weekStart } from "@/lib/research";
+import { BackLink } from "@/components/BackLink";
 
 export const metadata: Metadata = { title: "研究へのご協力" };
 
@@ -30,8 +30,8 @@ export default async function ResearchPage() {
     : { data: null };
 
   return (
-    <main className="mx-auto w-full max-w-2xl space-y-6 p-4 sm:p-6">
-      <Link href="/contribution" className="text-sm text-muted hover:text-foreground">← 貢献に戻る</Link>
+    <main className="mx-auto w-full max-w-2xl space-y-6 p-4 md:p-6">
+      <BackLink href="/contribution">マイページ</BackLink>
       <h1 className="text-xl font-bold">研究へのご協力</h1>
 
       {!active && (

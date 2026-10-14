@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { ContributionSummary } from "@/components/ContributionSummary";
 import { parseStats } from "@/lib/contribution";
 import { isPaused } from "@/lib/daily";
+import { BackLink } from "@/components/BackLink";
 
 export const metadata: Metadata = { title: "貢献ページ" };
 
@@ -38,8 +39,8 @@ export default async function ContributionPublicPage({
   const stats = parseStats(raw);
 
   return (
-    <main className="mx-auto w-full max-w-2xl space-y-6 p-4 sm:p-6">
-      <Link href="/members" className="text-sm text-muted hover:text-foreground">← 先輩一覧に戻る</Link>
+    <main className="mx-auto w-full max-w-2xl space-y-6 p-4 md:p-6">
+      <BackLink href="/members">先輩一覧</BackLink>
 
       <section className="card space-y-2">
         <div className="flex flex-wrap items-baseline gap-2">
@@ -50,7 +51,7 @@ export default async function ContributionPublicPage({
         </div>
         {prof.bio && <p className="text-sm">{prof.bio}</p>}
         {!isMe && prof.consult_ok && !isPaused(prof.paused_until) && (
-          <Link href={`/contact/${id}`} className="btn btn-primary text-xs">✉ 相談を送る</Link>
+          <Link href={`/contact/${id}`} className="btn btn-primary text-xs">メールで相談</Link>
         )}
         <div className="flex flex-wrap gap-2">
           {[...prof.languages, ...prof.courses, ...prof.topics].map((t) => (

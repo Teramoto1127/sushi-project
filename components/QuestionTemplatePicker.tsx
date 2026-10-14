@@ -48,22 +48,22 @@ export function QuestionTemplatePicker() {
   return (
     <section className="card space-y-3" aria-labelledby="template-heading">
       <div>
-        <h2 id="template-heading" className="text-sm font-semibold">書き方に迷ったら</h2>
+        <h2 id="template-heading" className="text-sm font-bold">何についての質問ですか?</h2>
         <p className="text-xs text-muted">
-          カテゴリを選ぶと、書き方のテンプレートと投稿例が見られます。使わなくても投稿できます。
+          選ぶと、書き方の下書きと投稿例が見られます。選ばなくても投稿できます。
         </p>
       </div>
 
-      <div className="flex flex-wrap gap-2" role="group" aria-label="質問のカテゴリ">
+      <div className="grid grid-cols-2 gap-2" role="group" aria-label="質問のカテゴリ">
         {QUESTION_TEMPLATES.map((t) => (
           <button
             key={t.id}
             type="button"
             onClick={() => select(t.id)}
             aria-pressed={activeId === t.id}
-            className={`check-chip ${activeId === t.id ? "bg-[var(--accent-soft)] border-[var(--accent)] text-[var(--accent-soft-fg)]" : ""}`}
+            className={`check-chip min-h-12 justify-start text-left leading-snug ${activeId === t.id ? "border-2 border-[var(--accent)] bg-[var(--accent-soft)] font-bold text-[var(--accent-soft-fg)]" : ""}`}
           >
-            <span aria-hidden>{t.icon}</span> {t.label}
+            {t.label}
           </button>
         ))}
       </div>

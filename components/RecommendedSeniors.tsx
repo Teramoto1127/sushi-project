@@ -69,14 +69,14 @@ export async function RecommendedSeniors({
   return (
     <section className="card space-y-3" aria-labelledby="recommend-heading">
       <div>
-        <h2 id="recommend-heading" className="text-sm font-semibold">🤝 この質問に合いそうな先輩</h2>
+        <h2 id="recommend-heading" className="text-sm font-semibold">この質問に答えられそうな先輩</h2>
         <p className="text-xs text-muted">
           タグと、公開されている実績から自動で選んでいます。回答を待つ間に、相談してみるのも一つの方法です。
         </p>
       </div>
       <ul className="space-y-3">
         {recs.map(({ candidate: c, reasons }) => (
-          <li key={c.userId} className="space-y-2 rounded-lg border border-line p-3">
+          <li key={c.userId} className="space-y-2 border-t border-line pt-3">
             <div className="flex flex-wrap items-baseline gap-2">
               <b>{c.displayName}</b>
               <span className="text-xs text-muted">
@@ -90,7 +90,7 @@ export async function RecommendedSeniors({
             </ul>
             <div className="flex flex-wrap gap-2">
               <Link href={`/contact/${c.userId}?q=${questionId}`} className="btn btn-primary text-xs">
-                ✉ 相談を送る
+                メールで相談
               </Link>
               <Link href={`/u/${c.userId}`} className="btn text-xs">貢献を見る</Link>
             </div>

@@ -25,7 +25,7 @@ export default async function NotificationsPage() {
   const unread = items.filter((n) => !n.read_at).length;
 
   return (
-    <main className="mx-auto w-full max-w-2xl space-y-4 p-4 sm:p-6">
+    <main className="mx-auto w-full max-w-2xl space-y-4 p-4 md:p-6">
       <div className="flex items-center justify-between gap-3">
         <h1 className="text-xl font-bold">通知</h1>
         {unread > 0 && (
@@ -48,12 +48,12 @@ export default async function NotificationsPage() {
             >
               <p className="text-sm font-semibold">
                 {n.type === "helpful"
-                  ? "👍 後輩から「助かった」が届きました"
+                  ? "後輩から「助かった」が届きました"
                   : n.type === "solved"
-                    ? "✓ あなたの回答で質問が解決しました"
+                    ? "あなたの回答で質問が解決しました"
                     : n.type === "answer"
-                      ? "💬 あなたの質問に回答が付きました"
-                      : "↩ 返信が付きました"}
+                      ? "あなたの質問に回答が付きました"
+                      : "返信が付きました"}
               </p>
               <p className="text-xs text-muted">質問: {n.questions?.title ?? "(削除された質問)"}</p>
               {n.answers?.body && (

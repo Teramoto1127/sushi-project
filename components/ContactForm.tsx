@@ -24,7 +24,7 @@ export function ContactForm({
   if (state?.message) {
     return (
       <div className="card space-y-3 text-sm" role="status">
-        <p className="font-semibold">✉ 送信しました</p>
+        <p className="font-semibold">送信しました</p>
         <p>{state.message}</p>
         <p className="text-xs text-muted">返信が来ないときも、急かさずに待ちましょう。質問として投稿しておくと、ほかの先輩にも見てもらえます。</p>
         <div className="flex flex-wrap gap-2">
@@ -92,7 +92,7 @@ export function ContactForm({
         </p>
       )}
 
-      <SubmitButton pendingText="送信中…">✉ メールで送る</SubmitButton>
+      <SubmitButton pendingText="送信中…">メールで送る</SubmitButton>
       <p className="text-xs text-muted">
         {toName}さんのメールアドレスは表示されません。返信するかどうかは先輩が決めます。1日に送れるのは3件までです。
       </p>

@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { createQuestion } from "@/app/actions";
 import { SubmitButton } from "@/components/SubmitButton";
 import { TagLimit } from "@/components/TagLimit";
 import { QuestionTemplatePicker } from "@/components/QuestionTemplatePicker";
+import { BackLink } from "@/components/BackLink";
 
 export const metadata: Metadata = { title: "質問する" };
 
@@ -13,9 +13,9 @@ export default async function NewQuestionPage() {
   const { data: tags } = await supabase.from("tags").select("name,kind").order("kind");
 
   return (
-    <main className="mx-auto w-full max-w-2xl p-4 sm:p-6">
-      <Link href="/questions" className="text-sm text-muted hover:text-foreground">← 質問一覧に戻る</Link>
-      <h1 className="mb-4 mt-2 text-xl font-bold">質問する</h1>
+    <main className="mx-auto w-full max-w-2xl p-4 md:p-6">
+      <BackLink href="/questions">質問一覧</BackLink>
+      <h1 className="mb-4 mt-2 text-[22px] font-bold leading-snug">質問する</h1>
       <div className="mb-5">
         <QuestionTemplatePicker />
       </div>
