@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { signOut } from "@/app/actions";
 import { NavLink } from "./NavLink";
+import { shouldShowBanner, weekStart } from "@/lib/research";
 
 export async function Header() {
   const supabase = await createClient();
@@ -13,6 +14,15 @@ export async function Header() {
         .select("id", { count: "exact", head: true })
         .is("read_at", null)
     : { count: 0 };
+
+  let showResearch = false;
+  if (user) {
+    const [{ data: part }, { data: done }] = await Promise.all([
+      supabase.from("research_participants").select("withdrawn_at").eq("user_id", user.id).maybeSingle(),
+      supabase.from("research_checkins").select("id").eq("user_id", user.id).eq("week_start", weekStart()).maybeSingle(),
+    ]);
+    showResearch = shouldShowBanner({ participant: part, answeredThisWeek: !!done });
+  }
 
   return (
     <header className="sticky top-0 z-10 border-b border-line bg-surface/90 backdrop-blur">
@@ -38,6 +48,12 @@ export async function Header() {
           </nav>
         )}
       </div>
+      {showResearch && (
+        <div className="border-t border-line bg-[var(--accent)]/10 px-4 py-1.5 text-center text-xs">
+          今週の研究の回答(1分)がまだです。
+          <Link href="/research" className="ml-1 underline">回答する</Link>
+        </div>
+      )}
     </header>
   );
 }

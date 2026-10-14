@@ -176,6 +176,12 @@ export default async function ContributionPage() {
           <SubmitButton className="btn text-xs" pendingText="保存中…">保存</SubmitButton>
         </form>
       </section>
+
+      <section className="card space-y-2 text-sm">
+        <p className="font-semibold">研究へのご協力</p>
+        <p className="text-muted">先輩・後輩のつながりを続けやすくする研究です。参加は自由で、いつでも抜けられます。</p>
+        <Link href="/research" className="btn text-xs">内容を見る</Link>
+      </section>
     </main>
   );
 }
