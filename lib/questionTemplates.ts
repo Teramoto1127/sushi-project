@@ -1,6 +1,7 @@
 // 質問のカテゴリ別テンプレートと投稿例。
 // 「何を書けば答えてもらいやすいか」を、書き始める前に示すためのもの。
 // 例の人物・授業・エラーはすべて架空。
+import { RESEARCH_MARKER } from "@/lib/research";
 
 export type QuestionTemplate = {
   id: string;
@@ -146,7 +147,7 @@ export const QUESTION_TEMPLATES: readonly QuestionTemplate[] = [
     hint: "卒論・ゼミ発表・研究計画などに、ほかの人の目で意見をもらうための質問です。書くのは話せる範囲で大丈夫です。個人情報や、公開できないデータ・未発表の結果は載せないでください(指導教員や共同研究者の了解が必要な内容も同じです)。",
     titleHint: "研究のテーマと、見てほしい点",
     body: [
-      "【研究のテーマ】(一文で)",
+      `${RESEARCH_MARKER}(一文で)`,
       "",
       "【いまの段階】(テーマ決め・計画・調査中・まとめ・発表前 など)",
       "",
@@ -160,7 +161,7 @@ export const QUESTION_TEMPLATES: readonly QuestionTemplate[] = [
     example: {
       title: "ゼミ発表の研究計画:調査の対象を「全学生」にするか「1年生だけ」にするか迷っています",
       body: [
-        "【研究のテーマ】",
+        RESEARCH_MARKER,
         "大学生が授業の質問をためらう理由を、アンケートで調べたいです。(架空の例)",
         "",
         "【いまの段階】",
